@@ -1,0 +1,35 @@
+# Define the schema for the JSON
+json_schema = StructType([
+    StructField("ucgDeviceName", StringType(), True),
+    StructField("ucgJsonData", StructType([
+        StructField("interfaces", StructType([
+            StructField("interface", MapType(StringType(), StructType([
+                StructField("name", StringType(), True),
+                StructField("subinterfaces", StructType([
+                    StructField("subinterface", MapType(StringType(), StructType([
+                        StructField("index", StringType(), True),
+                        StructField("state", StructType([
+                            StructField("counters", StructType([
+                                StructField("in-octets", IntegerType(), True),
+                                StructField("in-pkts", IntegerType(), True),
+                                StructField("out-octets", IntegerType(), True),
+                                StructField("out-pkts", IntegerType(), True)
+                            ]), True)
+                        ]), True)
+                    ])), True)
+                ]), True)
+            ])), True)
+        ]), True),
+        StructField("timestamp", StringType(), True)
+    ]), True),
+    StructField("ucgMessage", StringType(), True),
+    StructField("ucgSequenceNum", StringType(), True),
+    StructField("ucgSource", StringType(), True),
+    StructField("ucgTimestamp", StringType(), True),
+    StructField("ucgTopic", StringType(), True),
+    StructField("ucgType", StringType(), True),
+    StructField("ucgYangTopic", StringType(), True)
+])
+
+# Print the schema
+print(json_schema)
