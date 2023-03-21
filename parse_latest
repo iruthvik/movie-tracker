@@ -1,0 +1,70 @@
+
+from pyspark.sql.types import StructType, StructField, StringType, LongType, MapType
+
+schema = StructType([
+    StructField("ucgDeviceName", StringType(), True),
+    StructField("ucgJsonData", StructType([
+        StructField("interfaces", StructType([
+            StructField("interface", MapType(StringType(), StructType([
+                StructField("name", StringType(), True),
+                StructField("subinterfaces", MapType(StringType(), StructType([
+                    StructField("index", StringType(), True),
+                    StructField("state", StructType([
+                        StructField("counters", StructType([
+                            StructField("in-octets", LongType(), True),
+                            StructField("in-unicast-pkts", LongType(), True),
+                            StructField("last-clear", LongType(), True),
+                            StructField("out-octets", LongType(), True),
+                            StructField("out-unicast-pkts", LongType(), True),
+                        ]), True),
+                    ]), True),
+                ]), True),
+                StructField("state", StructType([
+                    StructField("counters", StructType([
+                        StructField("in-discards", LongType(), True),
+                        StructField("in-errors", LongType(), True),
+                        StructField("in-multicast-pkts", LongType(), True),
+                        StructField("in-octets", LongType(), True),
+                        StructField("in-pkts", LongType(), True),
+                        StructField("last-clear", LongType(), True),
+                        StructField("out-errors", LongType(), True),
+                        StructField("out-multicast-pkts", LongType(), True),
+                        StructField("out-octets", LongType(), True),
+                        StructField("out-pkts", LongType(), True),
+                    ]), True),
+                ]), True),
+            ]), True),
+        ]), True),
+        StructField("timestamp", LongType(), True),
+    ]), True),
+    StructField("ucgMessage", StringType(), True),
+    StructField("ucgSequenceNum", StringType(), True),
+    StructField("ucgSource", StringType(), True),
+    StructField("ucgTimestamp", StringType(), True),
+    StructField("ucgTopic", StringType(), True),
+    StructField("ucgType", StringType(), True),
+    StructField("ucgYangTopic", StringType(), True),
+])
+
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, explode
+
+# create a SparkSession
+spark = SparkSession.builder.appName("JSON Flattening").getOrCreate()
+
+# define the schema for the JSON files
+schema = "ucgDeviceName string, ucgJsonData struct<interfaces: struct<interface: array<struct<name: string, state: struct<counters: struct<in-discards: bigint, in-errors: bigint, in-multicast-pkts: bigint, in-octets: bigint, in-pkts: bigint, last-clear: bigint, out-errors: bigint, out-multicast-pkts: bigint, out-octets: bigint, out-pkts: bigint>>>>>>, timestamp bigint, ucgMessage string, ucgSequenceNum string, ucgSource string, ucgTimestamp string, ucgTopic string, ucgType string, ucgYangTopic string"
+
+# read the JSON files as a DataFrame with the specified schema
+df = spark.read.schema(schema).json("path/to/json/files/*")
+
+# flatten the 'ucgJsonData' column using explode function
+df_flat = df.select(col("ucgDeviceName"), col("timestamp"), col("ucgMessage"), col("ucgSequenceNum"), col("ucgSource"), col("ucgTimestamp"), col("ucgTopic"), col("ucgType"), col("ucgYangTopic"), explode("ucgJsonData.interfaces.interface").alias("interface"))
+
+# flatten the 'interface' column
+df_flat = df_flat.select(col("ucgDeviceName"), col("timestamp"), col("ucgMessage"), col("ucgSequenceNum"), col("ucgSource"), col("ucgTimestamp"), col("ucgTopic"), col("ucgType"), col("ucgYangTopic"), col("interface.name").alias("interface_name"), col("interface.state.counters.in-discards").alias("in_discards"), col("interface.state.counters.in-errors").alias("in_errors"), col("interface.state.counters.in-multicast-pkts").alias("in_multicast_pkts"), col("interface.state.counters.in-octets").alias("in_octets"), col("interface.state.counters.in-pkts").alias("in_pkts"), col("interface.state.counters.last-clear").alias("last_clear"), col("interface.state.counters.out-errors").alias("out_errors"), col("interface.state.counters.out-multicast-pkts").alias("out_multicast_pkts"), col("interface.state.counters.out-octets").alias("out_octets"), col("interface.state.counters.out-pkts").alias("out_pkts"))
+
+# show the flattened DataFrame
+df_flat.show()
+
