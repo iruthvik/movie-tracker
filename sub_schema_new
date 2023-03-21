@@ -1,0 +1,38 @@
+df_flattened = df.selectExpr("ucgDeviceName", "ucgJsonData.timestamp", "explode(ucgJsonData.interfaces.interface) as (interface_name, interface_info)") \
+    .selectExpr("ucgDeviceName", "timestamp", "interface_name", "explode(interface_info.subinterfaces.subinterface) as (subinterface_index, subinterface_info)") \
+    .selectExpr("ucgDeviceName", "timestamp", "interface_name", "subinterface_index", 
+                "subinterface_info.index as subinterface_info_index", 
+                "subinterface_info.state.counters.in-octets as in_octets",
+                "subinterface_info.state.counters.in-pkts as in_pkts",
+                "subinterface_info.state.counters.out-octets as out_octets",
+                "subinterface_info.state.counters.out-pkts as out_pkts")
+                
+                
+# Flatten the DataFrame using select
+df_flattened = df.select(
+    "ucgDeviceName",
+    "ucgJsonData.timestamp",
+    "ucgJsonData.interfaces.interface",
+).withColumn(
+    "interface_name", 
+    explode("interface")
+).selectExpr(
+    "ucgDeviceName",
+    "timestamp",
+    "interface_name",
+    "interface_name.value.name as name",
+    "explode(interface_name.value.subinterfaces.subinterface) as subinterface"
+).selectExpr(
+    "ucgDeviceName",
+    "timestamp",
+    "name",
+    "subinterface.key as subinterface_index",
+    "subinterface.value.index as subinterface_info_index",
+    "subinterface.value.state.counters.in-octets as in_octets",
+    "subinterface.value.state.counters.in-pkts as in_pkts",
+    "subinterface.value.state.counters.out-octets as out_octets",
+    "subinterface.value.state.counters.out-pkts as out_pkts",
+)
+
+# Show the flattened DataFrame
+df_flattened.show()
