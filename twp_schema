@@ -1,0 +1,52 @@
+from pyspark.sql.functions import explode
+from pyspark.sql.types import StructType, StructField, StringType, LongType, MapType
+
+# Define the schema for the JSON files
+schema = StructType([
+    StructField("ucgDeviceName", StringType(), True),
+    StructField("ucgJsonData", StructType([
+        StructField("interfaces", StructType([
+            StructField("interface", StructType([
+                StructField("re0:mgmt-0", StructType([
+                    StructField("name", StringType(), True),
+                    StructField("state", StructType([
+                        StructField("counters", MapType(StringType(), LongType()), True)
+                    ]), True),
+                    StructField("subinterfaces", StructType([
+                        StructField("subinterface", MapType(StringType(), StructType([
+                            StructField("index", StringType(), True),
+                            StructField("state", StructType([
+                                StructField("counters", MapType(StringType(), LongType()), True)
+                            ]), True)
+                        ])), True)
+                    ]), True)
+                ]))
+            ]), True)
+        ]), True),
+        StructField("timestamp", LongType(), True)
+    ]), True),
+    StructField("ucgMessage", StringType(), True),
+    StructField("ucgSequenceNum", StringType(), True),
+    StructField("ucgSource", StringType(), True),
+    StructField("ucgTimestamp", StringType(), True),
+    StructField("ucgTopic", StringType(), True),
+    StructField("ucgType", StringType(), True),
+    StructField("ucgYangTopic", StringType(), True)
+])
+
+# Read the JSON files and apply the schema
+df = spark.read.schema(schema).json("file1.json", "file2.json")
+
+# Use explode functions to flatten the columns
+df = df.select(
+    "ucgDeviceName",
+    "ucgJsonData.timestamp",
+    "ucgJsonData.interfaces.interface.re0:mgmt-0.name",
+    "ucgJsonData.interfaces.interface.re0:mgmt-0.state.counters",
+    explode("ucgJsonData.interfaces.interface.re0:mgmt-0.subinterfaces.subinterface").alias("subinterface"),
+    "ucgJsonData.interfaces.interface.re0:mgmt-0.subinterfaces.subinterface.value.index",
+    "ucgJsonData.interfaces.interface.re0:mgmt-0.subinterfaces.subinterface.value.state.counters"
+)
+
+# Show the resulting DataFrame
+df.show()
