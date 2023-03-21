@@ -1,0 +1,67 @@
+from pyspark.sql.functions import explode
+from pyspark.sql.types import StructType, StructField, StringType, LongType, DoubleType, MapType
+
+# Define schema for JSON data
+schema = StructType([
+    StructField("ucgDeviceName", StringType(), True),
+    StructField("ucgJsonData", StructType([
+        StructField("interfaces", StructType([
+            StructField("interface", MapType(
+                StringType(),
+                StructType([
+                    StructField("name", StringType(), True),
+                    StructField("state", StructType([
+                        StructField("counters", StructType([
+                            StructField("in-discards", LongType(), True),
+                            StructField("in-errors", LongType(), True),
+                            StructField("in-multicast-pkts", LongType(), True),
+                            StructField("in-octets", LongType(), True),
+                            StructField("in-pkts", LongType(), True),
+                            StructField("last-clear", LongType(), True),
+                            StructField("out-errors", LongType(), True),
+                            StructField("out-multicast-pkts", LongType(), True),
+                            StructField("out-octets", LongType(), True),
+                            StructField("out-pkts", LongType(), True)
+                        ])),
+                        StructField("subinterfaces", StructType([ # Add subinterfaces field
+                            StructField("subinterface", MapType(
+                                StringType(),
+                                StructType([
+                                    StructField("index", StringType(), True),
+                                    StructField("state", StructType([
+                                        StructField("counters", StructType([
+                                            StructField("in-octets", LongType(), True),
+                                            StructField("in-unicast-pkts", LongType(), True),
+                                            StructField("last-clear", LongType(), True),
+                                            StructField("out-octets", LongType(), True),
+                                            StructField("out-unicast-pkts", LongType(), True)
+                                        ]))
+                                    ]))
+                                ]),
+                                True
+                            ))
+                        ]))
+                    ]))
+                ]),
+                True
+            )
+        ])),
+        StructField("timestamp", DoubleType(), True)
+    ])),
+    StructField("ucgMessage", StringType(), True),
+    StructField("ucgSequenceNum", StringType(), True),
+    StructField("ucgSource", StringType(), True),
+    StructField("ucgTimestamp", StringType(), True),
+    StructField("ucgTopic", StringType(), True),
+    StructField("ucgType", StringType(), True),
+    StructField("ucgYangTopic", StringType(), True)
+])
+
+# Read JSON files and apply schema
+df = spark.read.schema(schema).json("path/to/first/json", "path/to/second/json")
+
+# Flatten the columns using explode function
+df = df.select("ucgDeviceName", "ucgJsonData.timestamp", 
+               explode("ucgJsonData.interfaces.interface").alias("interface_name", "interface_info"), 
+               explode("interface_info.subinterfaces.subinterface").alias("subinterface_index", "subinterface_info"), # Add subinterface
+               "ucgMessage", "ucgSequenceNum", "ucgSource", "ucgTimestamp", "ucgTopic", "ucgType", "ucgYangTopic")
